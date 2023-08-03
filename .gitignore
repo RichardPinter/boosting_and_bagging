@@ -172,4 +172,5 @@ plots/
 **/.idea
 **/.virtual_documents
 **/*_venv/
+boosting/
 get-pip.py
