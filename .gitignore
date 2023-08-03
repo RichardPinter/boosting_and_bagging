@@ -161,6 +161,7 @@ cython_debug/
 
 # data
 data/
+plots/
 
 **/*.pyc
 **/*.npy
