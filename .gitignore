@@ -161,3 +161,14 @@ cython_debug/
 
 # data
 data/
+
+**/*.pyc
+**/*.npy
+**/.ipynb_checkpoints/
+**/runs/
+**/lightning_logs/
+**/venv/
+**/.idea
+**/.virtual_documents
+**/*_venv/
+get-pip.py
