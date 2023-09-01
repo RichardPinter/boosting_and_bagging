@@ -4,150 +4,156 @@ import matplotlib.pyplot as plt
 import os
 import sys
 pd.set_option('mode.chained_assignment', None)
-from tqdm import tqdm
-import random
+import uuid
+from typing import List
+import pdb
 
-def is_numeric(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
+class ObjectiveFunction:
+    """Class to calculate the Gini index for a given list of events."""
+    def __init__(self, event_list: List[float]):
+        self.event_list = event_list
+        self.gini_index = self.calculate_gini_index()
 
-class Decision_tree():
-    """
-    Initialize the Decision Tree.
-    """
-    def __init__(self, data: pd.DataFrame, target: str, depth: int, ratio: float, random_state: int = 1992, weights = None) -> None:
+    def calculate_gini_index(self) -> float:
+        """Calculates and returns the Gini index."""
+        total = sum(self.event_list)
+        gini_index = 1.0
+        for event in self.event_list:
+            prob = event / total
+            gini_index -= prob ** 2
+        return gini_index
+
+    def get_gini_index(self) -> float:
+        """Returns the calculated Gini index."""
+        return self.gini_index
+
+
+class Splitter():
+    '''This class returns all splits for a given data (categorical columns only)'''
+    def __init__(self, data: pd.DataFrame):
         self.data = data
-        self.size = len(self.data)
-        self.columns = data.columns.tolist()
+        self.split_list = self.create_splits()
+
+    def create_splits(self):
+        '''
+        This class creates all possible splits of the data
+        and returns a list of conditionals
+        '''
+        split_list = []
+        for col in self.data.columns:
+            for value in self.data[col].unique():
+                split_list.append((col, value))
+        return split_list
+
+    def get_splits(self):
+        """Getter of the different splits"""
+        return self.split_list
+
+
+class BestSplitFinder():
+       def __init__(self,  data : pd.DataFrame, target : str):
+              self.data = data
+              self.target = target
+              self.splitter = Splitter(self.data.drop(self.target, axis = 1)).get_splits()
+              self.best_split = self.loop_through_splits()
+
+       def loop_through_splits(self):
+              """This function loops through all splits and find the one with the minimum gini index"""
+              split_dictionary = {}
+              for split in self.splitter:
+                     number_of_events_in_this_split = self.calculate_target_counts(split)
+                     objective = ObjectiveFunction(number_of_events_in_this_split)
+                     split_dictionary[split] = objective.get_gini_index()
+
+              # Find the key that corresponds to the minimum valuedd
+              min_key = min(split_dictionary, key=split_dictionary.get)
+              return min_key, split_dictionary.get(min_key, None)
+
+       def calculate_target_counts(self, split):
+              """Helps calculating the values that are target vs not target in a split"""
+              col, val = split
+              subset = self.data[self.data[col] == val]
+              return subset[self.target].value_counts().tolist()
+
+
+       def get_best_split(self):
+              """Rreturns the best split featuer and value"""
+              return self.best_split
+
+
+class Node():
+    def __init__(self, data, target):
+        self.data = data
         self.target = target
-        self.splits = [('Sex', 'male')]
+        (self.col, self.val), self.gini_index = self.calculate_gini_index()
+
+    
+    def calculate_gini_index(self):
+        best_split = BestSplitFinder(self.data, self.target)
+        return best_split.get_best_split()
+
+    def get_gini_index(self):
+        return self.gini_index
+
+    def get_col_and_val(self):
+        return self.col, self.val
+
+    def get_data(self):
+        return self.data
+
+    def get_child_boolean_mask(self, direciton):
+        boolean_mask_updated =  self.data[self.col] == self.val
+        return boolean_mask_updated if direciton == True else ~ boolean_mask_updated
+
+
+
+def Prediction_Tree(self, new_data, splits):
+    def __init__(self, new_data):
+        self.new_data = new_data
+
+
+class AllSplits():
+    def __init__(self, data, target, depth = 2):
+        self.data = data
+        self.target = target
         self.depth = depth
-        self.ratio = ratio
-        self.random_state = random_state
-        random.seed(random_state)  # Set random state for reproducibility
-        self.weights = np.repeat(1/self.size, self.size) if weights == None else weights
-        self.run_splits()
+        self.splits = {}
+        self.tree_splits = self.create_tree()
 
-    def run_splits(self):
-        while self.depth >= 1:
-            self.new_split()
-            self.depth -= 1
-        
-
-    def split_to_node(self, condition):
-        node_left = self.data[condition].copy()
-        node_right = self.data[~condition].copy()
-        return node_left, node_right
     
-    
-    def select_columns(self):
-        # Calculate best split for left and right child
-        random.shuffle(self.columns)
-        # Calculate the number of columns to select (10%)
-        num_columns_to_select = int(len(self.columns) * self.ratio)
-
-        # If the calculated number of columns is zero, select at least one column
-        num_columns_to_select = max(num_columns_to_select, 1)
-        
-        return self.columns[:num_columns_to_select]
-
-
-    def new_split(self):
-        best_score= 0
-        best_new_split = None
-        for split in self.splits:
-            # Go to the branch and look at left and right child
-            if is_numeric( split[1]):
-                node_left, node_right = self.split_to_node(self.data[split[0]] >= float(split[1]))
+    def create_tree(self):
+        boolean_mask = None
+        splits = {}
+        for _ in range(self.depth):
+            if splits == {}:
+                random_uuid = uuid.uuid4()  
+                splits[random_uuid] =  Node(self.data, self.target)
             else:
-                node_left, node_right = self.split_to_node(self.data[split[0]] == split[1])
-                
-            # Select the proportion of the columns
-            selected_columns = self.select_columns()
-            print(node_left, node_right)
-            # Find the best split for the nodes
-            left_split, left_score = self.best_slit_for_node(node_left, selected_columns)
-            right_split, right_score = self.best_slit_for_node(node_right, selected_columns)
+                # Loop through all the splits
+                gini_index = {}
+                for key, node in splits.items():
+                    gini_index[key] = node.get_gini_index()
+
+                # Find the split with the smallest gini index
+                min_key = min(gini_index, key=gini_index.get)    
+
+                # Get the data corresponding to the min_key
+                current_data = splits[min_key].get_data()
+
+                # create two new more splits and add it to the dictionary
+                for direction in [True, False]:
+                    boolean_mask_direction = splits[min_key].get_child_boolean_mask(direction)
+                    node_data = current_data[boolean_mask_direction]
+                    if node_data.empty:
+                        return splits
             
-            # Update best split
-            temp_dict = {left_score : left_split, right_score : right_split,  best_score: best_new_split}
-            max_key = max(temp_dict.keys())
-            # Get the value associated with the maximum key
-            best_score = max_key
-            
-        # Find best score
-        new_split = temp_dict[best_score]
-        if new_split == None:
-            return
-        self.splits.append(new_split)
-        print(self.splits)
+                    node_new =  Node(node_data, self.target)
+                    splits[uuid.uuid4()] = node_new
 
+                # delete old split
+                del splits[min_key]
 
-    def best_slit_for_node(self,data, columns):
-        self.gini_values = {}
-        for col  in columns:
-            for val in self.data[col].unique():
-                gini_weighted = self.split(data, col, val)
-                self.gini_values[col + '_split_' + str(val)] = gini_weighted
-        # Find the minimum value of the dictionary and update the self.data
-        min_key = min(self.gini_values, key=self.gini_values.get)
-        col, val = min_key.split('_split_')
-        return (col, val), self.gini_values[min_key]
-
-
-    def split(self, data, col, val):
-        # Calculate probability for each node
-        print(col, val)
-        cls1 = data[data[col] == val]
-        cls2 = data[data[col] != val]
-
-        prob_list, n1, n2 = self.calculate_probability(cls1, cls2)
+        return splits
         
-        # Calculate gini_index for each node
-        g1, g2 = self.gini_index(prob_list)
-        
-        # Return weighted gini-impuritiny index
-        return self.gini_impurity_for_split(g1, g2, n1, n2)
-
-
-
-    def calculate_probability(self, cls1, cls2):
-        ''''''
-        prob_cls1 = []
-        prob_cls2 = []
-        n1 = len(cls1)
-        n2 = len(cls2)
-
-        for val in cls1[self.target].unique():
-            temp_data = len(cls1[cls1[self.target] == val].copy())
-            prob_cls1.append(temp_data / n1)
-
-        for val in cls2[self.target].unique():
-            value2 = len(cls2[cls2[self.target] == val].copy())
-            prob_cls2.append(value2 / n2)
-
-        return [prob_cls1, prob_cls2], n1, n2
-        
-
-    def gini(self, data):
-        print(data)
-        weighted_elements = np.sum([(element * weight_i) **2 for element, weight_i in zip(data, self.weights)])
-        return 1 - weighted_elements / np.sum(self.weights)
-        
-
-    def gini(self, data):
-        weighted_elements = np.sum([(element * weight_i) **2 for element, weight_i in zip(data, self.weights)])
-        return 1 - weighted_elements / np.sum(self.weights)
-
-    def gini_index(self, prob_list):
-        g1 =  1 - self.gini(prob_list[0])
-        g2 = 1 - self.gini(prob_list[1])
-        return g1, g2
-        
-
-    def gini_impurity_for_split(self, g1, g2, n1, n2):
-        return n1/(n1+n2) * g1 + n2/(n1+n2) * g2
-        
+    def get_tree_splits(self):
+        return self.tree_splits

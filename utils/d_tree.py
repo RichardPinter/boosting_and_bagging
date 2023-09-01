@@ -76,3 +76,39 @@ class Decision_tree():
 
     def gini_impurity_for_split(self, g1, g2, n1, n2):
         return n1/(n1+n2) * g1 + n2/(n1+n2) * g2
+
+
+
+
+
+
+#######################################################################################
+    def create_tree(self):
+        """This function creates the tree"""
+        splits = []
+        combined_mask = None
+        for idx, _ in enumerate(range(self.depth)):
+            if splits == []:
+                best_split = BestSplitFinder(self.data, self.target, combined_mask)
+                min_key, gini_value = best_split.get_best_split()
+            else:
+                best_splits_list = {}
+                for split in splits:
+                    best_split_left = BestSplitFinder(self.data, self.target, ~split)
+                    best_split_right = BestSplitFinder(self.data, self.target, split)
+                for best_split in best_splits_list:
+                    (col, val), gini_value = best_split.get_best_split()
+                    split_dictionary[(col, val)] = gini_value
+                # Find the key that corresponds to the minimum valuedd
+                min_key = min(split_dictionary, key=split_dictionary.get)
+            col, val = min_key
+            print(min_key)
+            current_mask = (self.data[col] == val).values
+            print(len(current_mask))
+            # Update the combined mask
+            combined_mask = current_mask
+            # if combined_mask is None:
+            # else:
+            #     combined_mask &= current_mask  # Combine with the existing mask using bitwise AND
+            splits.append(combined_mask)
+        return splits
