@@ -124,10 +124,12 @@ class AllSplits():
     def create_tree(self):
         boolean_mask = None
         splits = {}
+        col_val = {}
         for _ in range(self.depth):
             if splits == {}:
                 random_uuid = uuid.uuid4()  
                 splits[random_uuid] =  Node(self.data, self.target)
+                col_val[random_uuid] =  (None, None)
             else:
                 # Loop through all the splits
                 gini_index = {}
@@ -145,15 +147,22 @@ class AllSplits():
                     boolean_mask_direction = splits[min_key].get_child_boolean_mask(direction)
                     node_data = current_data[boolean_mask_direction]
                     if node_data.empty:
-                        return splits
-            
+                        return splits, col_val
+
+                    # Create new node and values
                     node_new =  Node(node_data, self.target)
-                    splits[uuid.uuid4()] = node_new
+                    col, val = node_new.get_col_and_val()
+
+                    # Save the split and the columns and values of the split
+                    rand_uuid = uuid.uuid4()
+                    splits[rand_uuid] = node_new
+                    col_val[rand_uuid] = (col, val)
 
                 # delete old split
                 del splits[min_key]
+                del col_val[min_key]
 
-        return splits
+        return splits, col_val
         
     def get_tree_splits(self):
         return self.tree_splits
