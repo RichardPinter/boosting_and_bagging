@@ -107,9 +107,20 @@ class Node():
 
 
 
-def Prediction_Tree(self, new_data, splits):
-    def __init__(self, new_data):
+class Prediction_Tree():
+    def __init__(self, new_data, splits):
         self.new_data = new_data
+        self.splits = splits
+
+    def predict(self):
+        data = self.new_data
+        print(data)
+        for key, item in self.splits.items():
+             col, val = item.get_col_and_val()
+             temp = item.get_data()
+             print(col, val)
+             print(temp[temp[col] == val])
+             print('------------')
 
 
 class AllSplits():
@@ -138,7 +149,6 @@ class AllSplits():
 
                 # Find the split with the smallest gini index
                 min_key = min(gini_index, key=gini_index.get)    
-
                 # Get the data corresponding to the min_key
                 current_data = splits[min_key].get_data()
 
